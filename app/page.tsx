@@ -94,7 +94,7 @@ export default function Home() {
       />
 
       <div className="flex-1 flex flex-col">
-        <Header />
+        <Header selectedIconIds={selectedIconIds} styleConfig={styleConfig} packName={packName} />
 
         <main className="flex-1 overflow-auto p-8">
           <div className="max-w-7xl mx-auto space-y-8">

@@ -72,13 +72,32 @@ export async function fetchIconList(prefix: string): Promise<string[]> {
 
     const data = await response.json()
     
-    if (!data || !data.uncategorized) {
+    if (!data) {
       return []
     }
 
-    const icons = data.uncategorized as string[]
-    setCache(cacheKey, icons)
-    return icons
+    const icons: string[] = []
+    
+    // Handle uncategorized icons
+    if (data.uncategorized && Array.isArray(data.uncategorized)) {
+      icons.push(...data.uncategorized)
+    }
+    
+    // Handle categorized icons
+    if (data.categories && typeof data.categories === 'object') {
+      const categoryArrays = Object.values(data.categories) as string[][]
+      for (const categoryIcons of categoryArrays) {
+        if (Array.isArray(categoryIcons)) {
+          icons.push(...categoryIcons)
+        }
+      }
+    }
+    
+    // Remove duplicates (in case an icon appears in both uncategorized and a category)
+    const uniqueIcons = Array.from(new Set(icons))
+    
+    setCache(cacheKey, uniqueIcons)
+    return uniqueIcons
   } catch (error) {
     console.error(`Error fetching icon list for ${prefix}:`, error)
     throw error

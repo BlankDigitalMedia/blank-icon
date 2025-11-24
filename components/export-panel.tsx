@@ -81,7 +81,7 @@ export function ExportPanel({ selectedIconIds, styleConfig, packName }: ExportPa
         <div>
           <h2 className="text-lg font-semibold">Export Pack</h2>
           <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-            Download your complete icon pack with metadata. Includes all {selectedIconIds.length} icons as {styleConfig.iconSize || 144}×{styleConfig.iconSize || 144}px PNGs
+            Download your complete icon pack with metadata. Includes all {selectedIconIds.length} icons as 144×144px PNGs
             plus pack.json for Stream Deck Marketplace.
           </p>
 
@@ -94,7 +94,7 @@ export function ExportPanel({ selectedIconIds, styleConfig, packName }: ExportPa
           <div className="flex gap-4 mt-6">
             <div className="text-sm">
               <span className="text-muted-foreground">Format:</span>
-              <span className="ml-2 font-medium">PNG ({styleConfig.iconSize || 144}×{styleConfig.iconSize || 144})</span>
+              <span className="ml-2 font-medium">PNG (144×144)</span>
             </div>
             <div className="text-sm">
               <span className="text-muted-foreground">Icons:</span>

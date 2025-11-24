@@ -19,9 +19,11 @@ interface SidebarProps {
   setCurrentLibrary: (library: string) => void
   packName: string
   setPackName: (name: string) => void
+  mode: "recommended" | "advanced"
+  setMode: (mode: "recommended" | "advanced") => void
 }
 
-export function Sidebar({ styleConfig, setStyleConfig, currentLibrary, setCurrentLibrary, packName, setPackName }: SidebarProps) {
+export function Sidebar({ styleConfig, setStyleConfig, currentLibrary, setCurrentLibrary, packName, setPackName, mode, setMode }: SidebarProps) {
   const [activeTab, setActiveTab] = useState<"ai" | "design">("design")
   const [prompt, setPrompt] = useState("")
   const foregroundColorInputRef = useRef<HTMLInputElement>(null)
@@ -29,9 +31,8 @@ export function Sidebar({ styleConfig, setStyleConfig, currentLibrary, setCurren
 
   const library = ICON_LIBRARIES.find((lib) => lib.id === currentLibrary) || ICON_LIBRARIES[0]
   const supportsStroke = library.supportsStroke
-
-  const iconSizes = [72, 144, 288]
-  const currentIconSize = styleConfig.iconSize || 144
+  const styleMode = library.styleMode
+  const strokeRelevant = supportsStroke && styleMode !== "fill"
 
   return (
     <aside className="w-80 border-r border-border bg-card flex flex-col">
@@ -119,28 +120,36 @@ export function Sidebar({ styleConfig, setStyleConfig, currentLibrary, setCurren
                 />
               </div>
 
-              {/* Icon Library Selector */}
+              {/* Mode Toggle */}
               <div>
-                <Label className="text-xs text-muted-foreground mb-1.5 block">Icon Library</Label>
-                <LibrarySelector currentLibrary={currentLibrary} onLibraryChange={setCurrentLibrary} />
-              </div>
-
-              <div>
-                <Label className="text-xs text-muted-foreground">Icon Size</Label>
-                <div className="flex gap-2 mt-1.5">
-                  {iconSizes.map((size) => (
+                <Label className="text-xs text-muted-foreground mb-2 block">Mode</Label>
+                <div className="flex gap-2">
+                  {(["recommended", "advanced"] as const).map((m) => (
                     <Button
-                      key={size}
-                      variant={currentIconSize === size ? "secondary" : "outline"}
+                      key={m}
+                      variant={mode === m ? "secondary" : "outline"}
                       size="sm"
-                      className="flex-1 bg-transparent"
-                      onClick={() => setStyleConfig({ ...styleConfig, iconSize: size })}
+                      className="flex-1 capitalize"
+                      onClick={() => setMode(m)}
                     >
-                      {size}px
+                      {m}
                     </Button>
                   ))}
                 </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  {mode === "recommended"
+                    ? "Browse curated Stream Deck-focused icons"
+                    : "Access all icons from Iconify libraries"}
+                </p>
               </div>
+
+              {/* Icon Library Selector - Only show in Advanced mode */}
+              {mode === "advanced" && (
+                <div>
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">Icon Library</Label>
+                  <LibrarySelector currentLibrary={currentLibrary} onLibraryChange={setCurrentLibrary} />
+                </div>
+              )}
             </div>
           </div>
 
@@ -151,13 +160,13 @@ export function Sidebar({ styleConfig, setStyleConfig, currentLibrary, setCurren
               {/* Stroke Width */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label className={`text-xs ${supportsStroke ? "text-muted-foreground" : "text-muted-foreground/50"}`}>
+                  <Label className={`text-xs ${strokeRelevant ? "text-muted-foreground" : "text-muted-foreground/50"}`}>
                     Stroke Width
-                    {!supportsStroke && (
+                    {!strokeRelevant && (
                       <span className="ml-1 text-[10px]">(not applicable)</span>
                     )}
                   </Label>
-                  <span className={`text-xs ${supportsStroke ? "text-foreground" : "text-muted-foreground/50"}`}>
+                  <span className={`text-xs ${strokeRelevant ? "text-foreground" : "text-muted-foreground/50"}`}>
                     {styleConfig.strokeWidth}px
                   </span>
                 </div>
@@ -168,8 +177,8 @@ export function Sidebar({ styleConfig, setStyleConfig, currentLibrary, setCurren
                   max={5}
                   step={0.5}
                   className="mt-1"
-                  disabled={!supportsStroke}
-                  aria-disabled={!supportsStroke}
+                  disabled={!strokeRelevant}
+                  aria-disabled={!strokeRelevant}
                 />
               </div>
 

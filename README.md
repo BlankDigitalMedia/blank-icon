@@ -1,24 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Stream Deck Icon Pack Generator
+
+A modern web application for generating complete, consistent icon packs for Stream Deck devices. Browse curated Stream Deck-focused icons or access full Iconify libraries, customize styling, and export professional icon packs with metadata.
+
+## Features
+
+- **Two Browsing Modes**: Recommended (curated icons) and Advanced (full Iconify libraries)
+- **12 Icon Libraries**: Lucide, Material Symbols, Heroicons, Tabler, and more
+- **Advanced Styling**: Colors, stroke width, background shapes, padding, effects
+- **Real-time Preview**: See changes instantly with accurate rendering
+- **Export System**: Generate ZIP files with PNG icons and Stream Deck metadata
+- **Responsive Design**: Modern UI with dark theme and smooth animations
+
+## Tech Stack
+
+- **Framework**: Next.js 16 (App Router)
+- **UI**: React 19, TypeScript, Tailwind CSS 4
+- **Components**: Radix UI via shadcn/ui
+- **Icons**: Iconify API with local caching
+- **Export**: Canvas API for PNG rendering, JSZip for packaging
 
 ## Getting Started
 
-First, run the development server:
+First, install dependencies and run the development server:
 
 ```bash
+npm install
 npm run dev
 # or
-yarn dev
+yarn install && yarn dev
 # or
-pnpm dev
-# or
-bun dev
+pnpm install && pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
 ## Learn More
 

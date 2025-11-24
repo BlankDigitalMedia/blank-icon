@@ -25,13 +25,20 @@ export function IconRenderer({ iconName, prefix, styleConfig, size = 24, classNa
     setAccurateSvg(null)
   }, [iconName, prefix, accurate])
 
+  const library = ICON_LIBRARIES.find((lib) => lib.prefix === prefix)
+  const styleMode = library?.styleMode
+  const supportsStroke = library?.supportsStroke ?? false
+
   useEffect(() => {
     if (accurate && !hasError) {
       const loadAccurateSvg = async () => {
         try {
           const svg = await getIconSVG(prefix, iconName)
-          const iconSize = size * ((100 - styleConfig.padding) / 100)
-          const styledSvg = applyStyleToSvg(svg, styleConfig, iconSize)
+          // Calculate icon box size matching canvas logic: size - padding * 2
+          const paddingPx = (size * styleConfig.padding) / 100
+          const iconBoxSize = size - paddingPx * 2
+          // Apply foreground-only styling with styleMode
+          const styledSvg = applyStyleToSvg(svg, styleConfig, iconBoxSize, styleMode)
           setAccurateSvg(styledSvg)
         } catch (error) {
           console.error("Failed to load accurate SVG:", error)
@@ -40,17 +47,19 @@ export function IconRenderer({ iconName, prefix, styleConfig, size = 24, classNa
       }
       loadAccurateSvg()
     }
-  }, [accurate, iconName, prefix, styleConfig, size, hasError])
+  }, [accurate, iconName, prefix, styleConfig, size, hasError, styleMode])
 
   const iconId = `${prefix}:${iconName.toLowerCase().replace(/\s+/g, "-")}`
 
+  // Calculate border radius matching canvas logic
   const borderRadius =
     styleConfig.backgroundShape === "circle"
       ? "50%"
       : styleConfig.backgroundShape === "rounded"
-        ? "12px"
-        : "4px"
+        ? `${size * 0.1}px`
+        : "0px"
 
+  // Map effects to box-shadow matching canvas behavior
   const boxShadow =
     styleConfig.effect === "shadow"
       ? "0 8px 16px rgba(0, 0, 0, 0.3)"
@@ -58,10 +67,8 @@ export function IconRenderer({ iconName, prefix, styleConfig, size = 24, classNa
         ? `0 0 20px ${styleConfig.backgroundColor}80`
         : "none"
 
+  // Calculate icon size percentage for padding (matching canvas: iconBoxSize = size - paddingPx * 2)
   const iconSizePercent = 100 - styleConfig.padding
-
-  const library = ICON_LIBRARIES.find((lib) => lib.prefix === prefix)
-  const supportsStroke = library?.supportsStroke ?? false
 
   return (
     <div
@@ -80,6 +87,7 @@ export function IconRenderer({ iconName, prefix, styleConfig, size = 24, classNa
           ?
         </div>
       ) : accurate && accurateSvg ? (
+        // Accurate mode: foreground-only SVG (background handled by wrapper)
         <div
           style={{
             width: `${iconSizePercent}%`,
@@ -101,6 +109,7 @@ export function IconRenderer({ iconName, prefix, styleConfig, size = 24, classNa
           />
         </div>
       ) : (
+        // Fast mode: @iconify/react with color/stroke override based on capabilities
         <div
           style={{
             width: `${iconSizePercent}%`,
@@ -115,7 +124,7 @@ export function IconRenderer({ iconName, prefix, styleConfig, size = 24, classNa
             width={size * (iconSizePercent / 100)}
             height={size * (iconSizePercent / 100)}
             style={
-              supportsStroke
+              supportsStroke && styleMode === "stroke"
                 ? { color: styleConfig.foregroundColor, strokeWidth: styleConfig.strokeWidth }
                 : { color: styleConfig.foregroundColor }
             }

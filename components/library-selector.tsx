@@ -24,6 +24,8 @@ export const ICON_LIBRARIES = [
     prefix: "lucide",
     supportsStroke: true,
     supportsCurrentColor: true,
+    styleMode: "stroke" as const,
+    prefersBold: false,
   },
   {
     id: "material-symbols",
@@ -33,6 +35,8 @@ export const ICON_LIBRARIES = [
     prefix: "material-symbols",
     supportsStroke: false,
     supportsCurrentColor: true,
+    styleMode: "fill" as const,
+    prefersBold: false,
   },
   {
     id: "heroicons",
@@ -42,6 +46,8 @@ export const ICON_LIBRARIES = [
     prefix: "heroicons",
     supportsStroke: true,
     supportsCurrentColor: true,
+    styleMode: "stroke" as const,
+    prefersBold: false,
   },
   {
     id: "tabler",
@@ -51,6 +57,8 @@ export const ICON_LIBRARIES = [
     prefix: "tabler",
     supportsStroke: true,
     supportsCurrentColor: true,
+    styleMode: "stroke" as const,
+    prefersBold: false,
   },
   {
     id: "phosphor",
@@ -60,6 +68,8 @@ export const ICON_LIBRARIES = [
     prefix: "ph",
     supportsStroke: false,
     supportsCurrentColor: true,
+    styleMode: "fill" as const,
+    prefersBold: false,
   },
   {
     id: "carbon",
@@ -69,6 +79,8 @@ export const ICON_LIBRARIES = [
     prefix: "carbon",
     supportsStroke: false,
     supportsCurrentColor: true,
+    styleMode: "fill" as const,
+    prefersBold: false,
   },
   {
     id: "iconoir",
@@ -78,6 +90,8 @@ export const ICON_LIBRARIES = [
     prefix: "iconoir",
     supportsStroke: true,
     supportsCurrentColor: true,
+    styleMode: "stroke" as const,
+    prefersBold: false,
   },
   {
     id: "solar",
@@ -87,6 +101,8 @@ export const ICON_LIBRARIES = [
     prefix: "solar",
     supportsStroke: false,
     supportsCurrentColor: true,
+    styleMode: "fill" as const,
+    prefersBold: true,
   },
   {
     id: "mingcute",
@@ -96,6 +112,8 @@ export const ICON_LIBRARIES = [
     prefix: "mingcute",
     supportsStroke: false,
     supportsCurrentColor: true,
+    styleMode: "fill" as const,
+    prefersBold: false,
   },
   {
     id: "fluent",
@@ -105,6 +123,8 @@ export const ICON_LIBRARIES = [
     prefix: "fluent",
     supportsStroke: false,
     supportsCurrentColor: true,
+    styleMode: "fill" as const,
+    prefersBold: false,
   },
   {
     id: "mdi",
@@ -114,6 +134,8 @@ export const ICON_LIBRARIES = [
     prefix: "mdi",
     supportsStroke: false,
     supportsCurrentColor: true,
+    styleMode: "fill" as const,
+    prefersBold: false,
   },
   {
     id: "simple-icons",
@@ -123,6 +145,8 @@ export const ICON_LIBRARIES = [
     prefix: "simple-icons",
     supportsStroke: false,
     supportsCurrentColor: true,
+    styleMode: "fill" as const,
+    prefersBold: false,
   },
 ]
 

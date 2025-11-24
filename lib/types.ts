@@ -5,7 +5,6 @@ export interface StyleConfig {
   backgroundShape: "circle" | "rounded" | "square"
   padding: number
   effect: "shadow" | "glow" | "none"
-  iconSize?: number
 }
 
 export interface IconLibrary {
@@ -16,6 +15,8 @@ export interface IconLibrary {
   prefix: string
   supportsStroke: boolean
   supportsCurrentColor: boolean
+  styleMode: "stroke" | "fill" | "mixed"
+  prefersBold: boolean
 }
 
 export interface IconData {

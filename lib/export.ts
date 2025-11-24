@@ -1,18 +1,27 @@
 import JSZip from "jszip"
 import { StyleConfig } from "@/lib/types"
 import { getIconSVG, normalizeIconName, parseIconId } from "@/lib/iconify"
+import { ICON_LIBRARIES } from "@/components/library-selector"
 
 /**
- * Safely applies styling to an SVG string without corrupting markup
- * and without forcing stroke attributes on fill-only icons.
+ * Applies foreground-only styling to an SVG string.
+ * This function focuses solely on normalizing the foreground icon:
+ * - Sets size, monochrome color, and stroke/fill behavior
+ * - No background shapes or effects (handled separately in canvas)
+ * - Behavior driven by styleMode when provided
  *
  * Strategy:
  * - Parse to DOM, edit attributes, serialize back to string
- * - Always set root fill to foreground to unify monochrome output
- * - Only set stroke and stroke-width if the icon actually uses stroke
+ * - Set root fill and color to foreground for monochrome output
+ * - Apply stroke/fill normalization based on styleMode
  * - Explicitly set width/height to requested pixel size
  */
-export function applyStyleToSvg(svg: string, styleConfig: StyleConfig, pixelSize: number): string {
+export function applyStyleToSvg(
+  svg: string,
+  styleConfig: StyleConfig,
+  pixelSize: number,
+  styleMode?: "stroke" | "fill" | "mixed"
+): string {
   try {
     const parser = new DOMParser()
     const doc = parser.parseFromString(svg, "image/svg+xml")
@@ -25,42 +34,83 @@ export function applyStyleToSvg(svg: string, styleConfig: StyleConfig, pixelSize
     svgEl.setAttribute("width", String(pixelSize))
     svgEl.setAttribute("height", String(pixelSize))
 
-    // Determine if the icon actually uses strokes
-    const usesStroke =
-      doc.querySelector("[stroke]") !== null || doc.querySelector("[stroke-width]") !== null
-
     // Set both `fill` and CSS `color` on root:
     // - `fill` controls elements without an explicit fill
     // - `color` ensures elements using `currentColor` resolve to our chosen color
     svgEl.setAttribute("fill", styleConfig.foregroundColor)
     svgEl.setAttribute("color", styleConfig.foregroundColor)
 
-    // Normalize fills on child elements to a single foreground color, but
-    // respect 'none' and gradient/pattern fills.
-    const nodesWithFill = svgEl.querySelectorAll<SVGElement>("[fill]")
-    nodesWithFill.forEach((el) => {
-      const val = el.getAttribute("fill") || ""
-      const isNone = val === "none"
-      const isUrlRef = val.startsWith("url(")
-      if (!isNone && !isUrlRef) {
-        el.setAttribute("fill", styleConfig.foregroundColor)
-      }
-    })
+    // Determine if the icon actually uses strokes (for fallback behavior)
+    const hasStrokeElements =
+      doc.querySelector("[stroke]") !== null || doc.querySelector("[stroke-width]") !== null
 
-    // Apply stroke color/width only if strokes are present
-    if (usesStroke) {
+    // Apply styling based on styleMode
+    if (styleMode === "stroke") {
+      // Stroke-centric: normalize strokes, keep fills as "none" where appropriate
       const nodesWithStroke = svgEl.querySelectorAll<SVGElement>("[stroke], [stroke-width]")
       nodesWithStroke.forEach((el) => {
         el.setAttribute("stroke", styleConfig.foregroundColor)
         el.setAttribute("stroke-width", String(styleConfig.strokeWidth))
       })
-    } else {
-      // Remove stray stroke attributes to avoid unexpected outlines on fill-only icons
+
+      // Set fill to "none" for elements that should be stroke-only
+      const allElements = svgEl.querySelectorAll<SVGElement>("*")
+      allElements.forEach((el) => {
+        const currentFill = el.getAttribute("fill")
+        // Only set to "none" if not already a special fill (none, url, etc.)
+        if (currentFill && !currentFill.startsWith("url(") && currentFill !== "none") {
+          // Check if this element has stroke attributes - if so, prefer stroke
+          if (el.hasAttribute("stroke") || el.hasAttribute("stroke-width")) {
+            el.setAttribute("fill", "none")
+          }
+        }
+      })
+    } else if (styleMode === "fill") {
+      // Fill-centric: prioritize fills, avoid introducing artificial strokes
+      const nodesWithFill = svgEl.querySelectorAll<SVGElement>("[fill]")
+      nodesWithFill.forEach((el) => {
+        const val = el.getAttribute("fill") || ""
+        const isNone = val === "none"
+        const isUrlRef = val.startsWith("url(")
+        if (!isNone && !isUrlRef) {
+          el.setAttribute("fill", styleConfig.foregroundColor)
+        }
+      })
+
+      // Remove stroke attributes to avoid unexpected outlines
       const nodesWithStroke = svgEl.querySelectorAll<SVGElement>("[stroke], [stroke-width]")
       nodesWithStroke.forEach((el) => {
         el.removeAttribute("stroke")
         el.removeAttribute("stroke-width")
       })
+    } else {
+      // Mixed mode or fallback: normalize both carefully
+      // Normalize fills, but respect gradients and patterns
+      const nodesWithFill = svgEl.querySelectorAll<SVGElement>("[fill]")
+      nodesWithFill.forEach((el) => {
+        const val = el.getAttribute("fill") || ""
+        const isNone = val === "none"
+        const isUrlRef = val.startsWith("url(")
+        if (!isNone && !isUrlRef) {
+          el.setAttribute("fill", styleConfig.foregroundColor)
+        }
+      })
+
+      // Apply stroke only if strokes are actually present
+      if (hasStrokeElements) {
+        const nodesWithStroke = svgEl.querySelectorAll<SVGElement>("[stroke], [stroke-width]")
+        nodesWithStroke.forEach((el) => {
+          el.setAttribute("stroke", styleConfig.foregroundColor)
+          el.setAttribute("stroke-width", String(styleConfig.strokeWidth))
+        })
+      } else {
+        // Remove stray stroke attributes
+        const nodesWithStroke = svgEl.querySelectorAll<SVGElement>("[stroke], [stroke-width]")
+        nodesWithStroke.forEach((el) => {
+          el.removeAttribute("stroke")
+          el.removeAttribute("stroke-width")
+        })
+      }
     }
 
     // Serialize back to string
@@ -75,7 +125,8 @@ export function applyStyleToSvg(svg: string, styleConfig: StyleConfig, pixelSize
 export async function renderIconToCanvas(
   svgString: string,
   styleConfig: StyleConfig,
-  size: number = 144
+  size: number = 144,
+  styleMode?: "stroke" | "fill" | "mixed"
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const canvas = document.createElement("canvas")
@@ -88,65 +139,74 @@ export async function renderIconToCanvas(
       return
     }
 
-    const padding = (size * styleConfig.padding) / 100
-    const iconSize = size - padding * 2
+    // Step 1: Prepare canvas and compute dimensions
+    const paddingPx = (size * styleConfig.padding) / 100
+    const iconBoxSize = size - paddingPx * 2
 
-    const modifiedSvg = applyStyleToSvg(svgString, styleConfig, iconSize)
+    // Step 2: Draw background shape first
+    const borderRadius =
+      styleConfig.backgroundShape === "circle"
+        ? size / 2
+        : styleConfig.backgroundShape === "rounded"
+          ? size * 0.1
+          : 0
+
+    ctx.save()
+
+    if (borderRadius > 0) {
+      ctx.beginPath()
+      if (styleConfig.backgroundShape === "circle") {
+        ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2)
+      } else {
+        // Rounded rectangle
+        ctx.moveTo(borderRadius, 0)
+        ctx.lineTo(size - borderRadius, 0)
+        ctx.quadraticCurveTo(size, 0, size, borderRadius)
+        ctx.lineTo(size, size - borderRadius)
+        ctx.quadraticCurveTo(size, size, size - borderRadius, size)
+        ctx.lineTo(borderRadius, size)
+        ctx.quadraticCurveTo(0, size, 0, size - borderRadius)
+        ctx.lineTo(0, borderRadius)
+        ctx.quadraticCurveTo(0, 0, borderRadius, 0)
+        ctx.closePath()
+      }
+      ctx.clip()
+    }
+
+    // Fill background with backgroundColor
+    ctx.fillStyle = styleConfig.backgroundColor
+    ctx.fillRect(0, 0, size, size)
+
+    ctx.restore()
+
+    // Step 3: Apply effect (shadow/glow) before drawing icon
+    if (styleConfig.effect === "shadow") {
+      ctx.shadowColor = "rgba(0, 0, 0, 0.3)"
+      ctx.shadowBlur = 16
+      ctx.shadowOffsetX = 0
+      ctx.shadowOffsetY = 8
+    } else if (styleConfig.effect === "glow") {
+      ctx.shadowColor = styleConfig.backgroundColor
+      ctx.shadowBlur = 20
+      ctx.shadowOffsetX = 0
+      ctx.shadowOffsetY = 0
+    }
+
+    // Step 4: Draw icon (foreground-only SVG, centered in padded box)
+    // Get foreground-only SVG styled for the icon box size
+    const foregroundSvg = applyStyleToSvg(svgString, styleConfig, iconBoxSize, styleMode)
 
     const img = new Image()
-    const svgBlob = new Blob([modifiedSvg], { type: "image/svg+xml" })
+    const svgBlob = new Blob([foregroundSvg], { type: "image/svg+xml" })
     const url = URL.createObjectURL(svgBlob)
 
     img.onload = () => {
       URL.revokeObjectURL(url)
 
-      const borderRadius =
-        styleConfig.backgroundShape === "circle"
-          ? size / 2
-          : styleConfig.backgroundShape === "rounded"
-            ? size * 0.1
-            : 0
+      // Draw the icon centered in the padded box
+      ctx.drawImage(img, paddingPx, paddingPx, iconBoxSize, iconBoxSize)
 
-      ctx.save()
-
-      if (borderRadius > 0) {
-        ctx.beginPath()
-        if (styleConfig.backgroundShape === "circle") {
-          ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2)
-        } else {
-          ctx.moveTo(borderRadius, 0)
-          ctx.lineTo(size - borderRadius, 0)
-          ctx.quadraticCurveTo(size, 0, size, borderRadius)
-          ctx.lineTo(size, size - borderRadius)
-          ctx.quadraticCurveTo(size, size, size - borderRadius, size)
-          ctx.lineTo(borderRadius, size)
-          ctx.quadraticCurveTo(0, size, 0, size - borderRadius)
-          ctx.lineTo(0, borderRadius)
-          ctx.quadraticCurveTo(0, 0, borderRadius, 0)
-          ctx.closePath()
-        }
-        ctx.clip()
-      }
-
-      ctx.fillStyle = styleConfig.backgroundColor
-      ctx.fillRect(0, 0, size, size)
-
-      ctx.restore()
-
-      if (styleConfig.effect === "shadow") {
-        ctx.shadowColor = "rgba(0, 0, 0, 0.3)"
-        ctx.shadowBlur = 16
-        ctx.shadowOffsetX = 0
-        ctx.shadowOffsetY = 8
-      } else if (styleConfig.effect === "glow") {
-        ctx.shadowColor = styleConfig.backgroundColor
-        ctx.shadowBlur = 20
-        ctx.shadowOffsetX = 0
-        ctx.shadowOffsetY = 0
-      }
-
-      ctx.drawImage(img, padding, padding, iconSize, iconSize)
-
+      // Step 5: Reset shadows after drawing
       if (styleConfig.effect !== "none") {
         ctx.shadowColor = "transparent"
         ctx.shadowBlur = 0
@@ -236,7 +296,7 @@ export async function exportIconPack(
   onProgress?: (current: number, total: number) => void
 ): Promise<void> {
   const iconBlobs = new Map<string, Blob>()
-  const iconSize = styleConfig.iconSize || 144
+  const iconSize = 144
 
   for (let i = 0; i < selectedIconIds.length; i++) {
     const iconId = selectedIconIds[i]
@@ -244,8 +304,11 @@ export async function exportIconPack(
 
     try {
       const { prefix, name } = parseIconId(iconId)
+      const library = ICON_LIBRARIES.find((lib) => lib.prefix === prefix)
+      const styleMode = library?.styleMode
+      
       const svg = await getIconSVG(prefix, name)
-      const blob = await renderIconToCanvas(svg, styleConfig, iconSize)
+      const blob = await renderIconToCanvas(svg, styleConfig, iconSize, styleMode)
       iconBlobs.set(iconId, blob)
     } catch (error) {
       console.error(`Failed to export icon ${iconId}:`, error)
